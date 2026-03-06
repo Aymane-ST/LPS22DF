@@ -53,6 +53,7 @@
 #include "Wire.h"
 #include "SPI.h"
 #include "lps22df_reg.h"
+#include "I3C.h"
 
 
 /* Defines -------------------------------------------------------------------*/
@@ -60,6 +61,15 @@
 #define LPS22DF_I2C_BUS          0U
 #define LPS22DF_SPI_4WIRES_BUS   1U
 #define LPS22DF_SPI_3WIRES_BUS   2U
+#define LPS22DF_I3C_BUS          3U
+
+/** I3C/I2C Device Static Address 7 bit format  if SA0=0 -> 0x5C if SA0=1 -> 0x5D **/
+#define LPS22DF_I3C_ADD_L               0x5CU
+#define LPS22DF_I3C_ADD_H               0x5DU
+
+/** I3C/I2C Device PID**/
+static const uint64_t LPS22DF_I3C_PID_L = 0x020800B4100BULL;
+static const uint64_t LPS22DF_I3C_PID_H = 0x020800B4900BULL;
 
 
 /* Typedefs ------------------------------------------------------------------*/
@@ -79,6 +89,7 @@ class LPS22DFSensor {
   public:
     LPS22DFSensor(TwoWire *i2c, uint8_t address = LPS22DF_I2C_ADD_H);
     LPS22DFSensor(SPIClass *spi, int cs_pin, uint32_t spi_speed = 2000000);
+    LPS22DFSensor(I3CBus *i3c, uint8_t staticAddr7 = 0, uint8_t dynAddr7 = 0);
 
     LPS22DFStatusTypeDef begin();
     LPS22DFStatusTypeDef end();
@@ -99,6 +110,13 @@ class LPS22DFSensor {
 
     LPS22DFStatusTypeDef Set_One_Shot();
     LPS22DFStatusTypeDef Get_One_Shot_Status(uint8_t *Status);
+
+    LPS22DFStatusTypeDef ConfigureDataReadyOnI3cIbi();
+    LPS22DFStatusTypeDef EnableIbiOnBus(uint8_t targetIndex = 1,
+                                        uint32_t timeoutMs = 1000,
+                                        bool withPayload = true);
+
+    void set_address(uint8_t dynAddr7);
 
     /**
      * @brief Utility function to read data.
@@ -144,6 +162,13 @@ class LPS22DFSensor {
         return 0;
       }
 
+      if (dev_i3c) {
+        if (dev_i3c->readRegBuffer(address, RegisterAddr, pBuffer, NumByteToRead) == 0) {
+          return 0;
+        }
+        return 1;
+      }
+
       return 1;
     }
 
@@ -187,6 +212,12 @@ class LPS22DFSensor {
 
         return 0;
       }
+      if (dev_i3c) {
+        if (dev_i3c->writeRegBuffer(address, RegisterAddr, pBuffer, NumByteToWrite) == 0) {
+          return 0;
+        }
+        return 1;
+      }
 
       return 1;
     }
@@ -198,6 +229,7 @@ class LPS22DFSensor {
     /* Helper classes. */
     TwoWire  *dev_i2c;
     SPIClass *dev_spi;
+    I3CBus   *dev_i3c;
 
     uint32_t     bus_type; /*0 means I2C, 1 means SPI 4-Wires, 2 means SPI-3-Wires */
     uint8_t      initialized;
@@ -208,6 +240,9 @@ class LPS22DFSensor {
     uint8_t  address;
     int      cs_pin;
     uint32_t spi_speed;
+
+    uint8_t  i3c_static7;
+    uint8_t  i3c_dyn7;
 
     lps22df_ctx_t reg_ctx;
 };
