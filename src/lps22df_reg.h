@@ -25,6 +25,11 @@
 extern "C" {
 #endif
 
+/* Core compatibility --------------------------------------------------------*/
+#if defined(STM32_CORE_VERSION) && (STM32_CORE_VERSION  < 0x020C0000)
+  #error "This library is not compatible with core version used. Please update the core."
+#endif
+
 /* Includes ------------------------------------------------------------------*/
 #include <stdint.h>
 #include <stddef.h>
