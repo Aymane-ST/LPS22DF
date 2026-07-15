@@ -71,6 +71,7 @@ LPS22DFSensor::LPS22DFSensor(SPIClass *spi, int cs_pin, uint32_t spi_speed) : de
   enabled = 0L;
 }
 
+#if defined(I3C_SUPPORTED)
 LPS22DFSensor::LPS22DFSensor(I3CBus *i3c, uint8_t staticAddr7, uint8_t dynAddr7)
 {
   reg_ctx.write_reg = LPS22DF_io_write;
@@ -93,9 +94,9 @@ LPS22DFSensor::LPS22DFSensor(I3CBus *i3c, uint8_t staticAddr7, uint8_t dynAddr7)
 
 void LPS22DFSensor::set_address(uint8_t dynAddr7)
 {
-
   address = dynAddr7;
 }
+#endif
 
 /**
  * @brief  Configure the sensor in order to be used
@@ -112,6 +113,7 @@ LPS22DFStatusTypeDef LPS22DFSensor::begin()
     digitalWrite(cs_pin, HIGH);
   }
 
+#if defined(I3C_SUPPORTED)
   if (dev_i3c != nullptr) {
     Serial.println("I3C");
 
@@ -148,6 +150,7 @@ LPS22DFStatusTypeDef LPS22DFSensor::begin()
     }
     dev_i3c->setClock(12500000);
   }
+#endif
 
   /* Set bdu and if_inc recommended for driver usage */
   if (lps22df_init_set(&reg_ctx, LPS22DF_DRV_RDY) != LPS22DF_OK) {
@@ -159,14 +162,20 @@ LPS22DFStatusTypeDef LPS22DFSensor::begin()
     bus_mode.interface = lps22df_bus_mode_t::LPS22DF_SPI_3W;
   } else if (bus_type == LPS22DF_SPI_4WIRES_BUS) {
     bus_mode.interface = lps22df_bus_mode_t::LPS22DF_SPI_4W;
-  } else if (bus_type == LPS22DF_I3C_BUS) {
+  }
+#if defined(I3C_SUPPORTED)
+  else if (bus_type == LPS22DF_I3C_BUS) {
     bus_mode.interface = lps22df_bus_mode_t::LPS22DF_INT_PIN_ON_I3C;
-  } else {
+  }
+#endif
+  else {
     bus_mode.interface = lps22df_bus_mode_t::LPS22DF_SEL_BY_HW;
   }
 
   bus_mode.filter = lps22df_bus_mode_t::LPS22DF_AUTO;
+#if defined(I3C_SUPPORTED)
   bus_mode.i3c_ibi_time = lps22df_bus_mode_t::LPS22DF_IBI_1ms;
+#endif
 
   if (lps22df_bus_mode_set(&reg_ctx, &bus_mode) != LPS22DF_OK) {
     return LPS22DF_ERROR;
@@ -569,6 +578,7 @@ int32_t LPS22DF_io_read(void *handle, uint8_t ReadAddr, uint8_t *pBuffer, uint16
   return ((LPS22DFSensor *)handle)->IO_Read(pBuffer, ReadAddr, nBytesToRead);
 }
 
+#if defined(I3C_SUPPORTED)
 LPS22DFStatusTypeDef LPS22DFSensor::ConfigureDataReadyOnI3cIbi()
 {
   if (dev_i3c == nullptr) {
@@ -604,3 +614,4 @@ LPS22DFStatusTypeDef LPS22DFSensor::EnableIbiOnBus(uint8_t targetIndex,
 
   return LPS22DF_OK;
 }
+#endif
